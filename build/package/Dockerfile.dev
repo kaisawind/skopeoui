@@ -1,4 +1,4 @@
-FROM 192.168.1.118:5000/alpine
+FROM 192.168.1.118:5000/skopeo/stable:v1.20
 LABEL MAINTAINER="kaisawind <wind.kaisa@gmail.com>"
 
 COPY bin/skopeoui /skopeoui

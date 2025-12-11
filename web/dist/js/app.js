@@ -1,5 +1,5 @@
 // ---------- 全局状态 ----------
-const BASE_URL = "http://localhost:8080";
+const BASE_URL = "";
 const DELETE_LOG_URL = BASE_URL + "/v1/log";
 const DELETE_LOG_BY_TASK_ID_URL = BASE_URL + "/v1/logs/task";
 const GET_LOG_URL = BASE_URL + "/v1/log";

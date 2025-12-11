@@ -39,6 +39,8 @@ func init() {
 		vip.SetDefault(EnvKey, "prod")
 		vip.SetDefault(Mode, "prod")
 
+		set_core_default()
+
 		if vip.GetString(Mode) == "debug" {
 			go func() {
 				logrus.Infoln("pprof is starting...")
