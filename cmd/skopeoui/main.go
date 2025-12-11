@@ -1,9 +1,9 @@
 package main
 
-import (
-	"log"
-)
+import "os"
 
 func main() {
-	log.Println("skopeoui is running")
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

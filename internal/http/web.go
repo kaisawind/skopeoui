@@ -1,7 +1,7 @@
 package http
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"io/fs"
 	"net/http"
 	"os"
@@ -16,7 +16,7 @@ type WebMux struct {
 	*http.ServeMux
 }
 
-func ServeMux(mux *http.ServeMux) *http.ServeMux {
+func ServeWebMux(mux *http.ServeMux) *http.ServeMux {
 	if _, err := os.Stat(distPath); err != nil {
 		logrus.Infoln("local web disabled")
 	} else {
@@ -61,8 +61,7 @@ func HttpResponse(rw http.ResponseWriter, code int, data any) {
 		"success": true,
 		"data":    data,
 	}
-	buff, _ := json.Marshal(out)
-	rw.Write(buff)
+	_ = json.MarshalWrite(rw, out)
 }
 
 func HttpError(rw http.ResponseWriter, code int, message string) {
@@ -73,6 +72,5 @@ func HttpError(rw http.ResponseWriter, code int, message string) {
 		"code":    code,
 		"error":   message,
 	}
-	buff, _ := json.Marshal(data)
-	rw.Write(buff)
+	_ = json.MarshalWrite(rw, data)
 }

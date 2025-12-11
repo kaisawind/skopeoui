@@ -1,0 +1,6 @@
+FROM 192.168.1.118:5000/alpine
+LABEL MAINTAINER="kaisawind <wind.kaisa@gmail.com>"
+
+COPY bin/skopeoui /skopeoui
+
+CMD ["/skopeoui", "--log-level=info"]

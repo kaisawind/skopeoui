@@ -21,4 +21,7 @@ const (
 
 type IDB interface {
 	Close() error
+
+	ITask
+	ILog
 }

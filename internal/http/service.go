@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	pkgdb "github.com/kaisawind/skopeoui/pkg/db"
 	pkgsvc "github.com/kaisawind/skopeoui/pkg/service"
 	"github.com/sirupsen/logrus"
 )
@@ -11,15 +12,17 @@ import (
 type Service struct {
 	opts       *pkgsvc.Options
 	httpServer *http.Server
+	db         pkgdb.IDB
 }
 
-func NewService(opt ...pkgsvc.Option) pkgsvc.IService {
+func NewService(db pkgdb.IDB, opt ...pkgsvc.Option) pkgsvc.IService {
 	opts := pkgsvc.NewOptions().SetAddress(":8080")
 	for _, o := range opt {
 		o.Apply(opts)
 	}
 	return &Service{
 		opts: opts,
+		db:   db,
 	}
 }
 

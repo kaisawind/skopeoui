@@ -4,6 +4,8 @@ import "net/http"
 
 func (s *Service) WebMux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux = ServeMux(mux)
+	mux = ServeWebMux(mux)
+	mux = s.ServeLogMux(mux)
+	mux = s.ServeTaskMux(mux)
 	return mux
 }
