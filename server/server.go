@@ -31,7 +31,7 @@ func NewServer(ops ...*Options) *Server {
 	}
 	return &Server{
 		opts:  opts,
-		crons: cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger))),
+		crons: cron.New(cron.WithChain(cron.DelayIfStillRunning(cron.DefaultLogger))),
 		quit:  make(chan struct{}),
 	}
 }

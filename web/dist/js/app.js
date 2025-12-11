@@ -139,11 +139,29 @@ async function loadTasks() {
   data.data.items.forEach((t) => {
     const tr = document.createElement("tr");
     tr.className = "border-b";
-    tr.innerHTML = `<td>${t.id}</td><td>${t.cron}</td><td>${t.source}</td><td>${t.destination}</td>
-          <td><button class="text-red-600 delete-btn" data-id="${t.id}">删除</button></td>`;
+    tr.innerHTML = `
+    <td>${t.id}</td>
+    <td>${t.cron}</td>
+    <td>${t.source}</td>
+    <td>${t.destination}</td>
+    <td class="space-x-2">
+      <button class="text-blue-600 text-sm update-btn" data-id="${t.id}" data-cron="${t.cron}" data-source="${t.source}" data-dest="${t.destination}">更新</button>
+      <button class="text-red-600 delete-btn" data-id="${t.id}">删除</button>
+    </td>`;
     tbody.appendChild(tr);
   });
   document.getElementById("page-info").textContent = `第 ${currentPage + 1} 页`;
+  // 绑定更新按钮
+  document.querySelectorAll(".update-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.id;
+      document.getElementById("update-task-id").value = id;
+      document.getElementById("update-task-cron").value = btn.dataset.cron;
+      document.getElementById("update-task-source").value = btn.dataset.source;
+      document.getElementById("update-task-dest").value = btn.dataset.dest;
+      document.getElementById("update-modal").classList.remove("hidden");
+    });
+  });
   // 绑定删除
   document.querySelectorAll(".delete-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -154,6 +172,39 @@ async function loadTasks() {
     });
   });
 }
+
+document.getElementById("form-update-task").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = parseInt(document.getElementById("update-task-id").value);
+    const cron = document.getElementById("update-task-cron").value.trim();
+    const source = document.getElementById("update-task-source").value.trim();
+    const dest = document.getElementById("update-task-dest").value.trim();
+
+    if (!cron || !source || !dest) {
+      alert("请填写完整信息");
+      return;
+    }
+
+    const task = { id, cron, source, destination: dest };
+    const res = await fetch(`${UPDATE_TASK_URL}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(task),
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("更新成功");
+      document.getElementById("update-modal").classList.add("hidden");
+      loadTasks();
+    } else {
+      alert("更新失败: " + data.error);
+    }
+  });
+
+// 取消按钮
+document.getElementById("btn-cancel-update").addEventListener("click", () => {
+  document.getElementById("update-modal").classList.add("hidden");
+});
 
 document.getElementById("btn-prev").addEventListener("click", () => {
   if (currentPage > 0) {
@@ -189,10 +240,8 @@ document
   .addEventListener("click", loadTaskIdsForLog);
 loadTaskIdsForLog();
 
-let taskEventSource = null;
 document.getElementById("task-id-select").addEventListener("change", (e) => {
   const id = e.target.value;
-  if (taskEventSource) taskEventSource.close();
   if (!id) return;
   const logContainer = document.getElementById("task-log-container");
   logContainer.innerHTML = "";
