@@ -65,6 +65,7 @@ func (db *DB) UpdateLog(ctx context.Context, in *pb.Log) (err error) {
 }
 
 func (db *DB) GetLog(ctx context.Context, id int32) (out *pb.Log, err error) {
+	out = &pb.Log{}
 	err = db.client.View(func(tx *bbolt.Tx) error {
 		v := db.CLog(tx).Get(itob(id))
 		if v == nil {

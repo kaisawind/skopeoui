@@ -46,19 +46,21 @@ document.getElementById("form-once").addEventListener("submit", async (e) => {
   const data = await res.json();
   if (data.success) {
     if (data.data.id) {
-        const logContainer = document.getElementById("once-log-container");
-        logContainer.innerHTML = "";
-        onceEventSource = new EventSource(`${GET_ONCE_LOG_URL}?id=${data.data.id}`);
-        onceEventSource.onmessage = (ev) => {
-          const log = ev.data;
-          const safeLog = log
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\n/g, "<br>");
-          logContainer.innerHTML += safeLog + "<br>";
-          logContainer.scrollTop = logContainer.scrollHeight;
-        };
+      const logContainer = document.getElementById("once-log-container");
+      logContainer.innerHTML = "";
+      onceEventSource = new EventSource(
+        `${GET_ONCE_LOG_URL}?id=${data.data.id}`
+      );
+      onceEventSource.onmessage = (ev) => {
+        const log = ev.data;
+        const safeLog = log
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br>");
+        logContainer.innerHTML += safeLog + "<br>";
+        logContainer.scrollTop = logContainer.scrollHeight;
+      };
     }
     loadOnceTaskIds(); // 自动刷新下拉
   } else {
@@ -194,12 +196,15 @@ document.getElementById("task-id-select").addEventListener("change", (e) => {
   if (!id) return;
   const logContainer = document.getElementById("task-log-container");
   logContainer.innerHTML = "";
-  taskEventSource = new EventSource(`${GET_TASK_LOG_URL}?id=${id}`);
-  taskEventSource.onmessage = (ev) => {
-    const log = JSON.parse(ev.data);
-    logContainer.innerHTML += `[${new Date(log.time * 1000).toISOString()}] ${
-      log.msg
-    }\n`;
-    logContainer.scrollTop = logContainer.scrollHeight;
-  };
+  fetch(`${GET_LOG_URL}?id=${id}`).then(async (res) => {
+    const data = await res.json();
+    if (!data.success) return;
+    const { msg: log } = data.data;
+    const safeLog = log
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
+    logContainer.innerHTML = safeLog;
+  });
 });

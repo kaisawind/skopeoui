@@ -45,12 +45,11 @@
     <div id="tab-task" class="tab-content hidden">
       <div class="bg-white p-4 rounded shadow mb-4">
         <h2 class="text-lg font-semibold mb-2">新建定时任务</h2>
-        <form id="form-task" class="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <input type="text" id="task-cron" placeholder="Cron 表达式" class="p-2 border rounded" required />
-          <input type="text" id="task-source" placeholder="Source Image" class="p-
-          2 border rounded" required />
-          <input type="text" id="task-dest" placeholder="Destination Image" class="p-2 border rounded" required />
-          <button type="submit" class="col-span-2 bg-blue-600 text-white px-4 py-2 rounded">创建</button>
+        <form id="form-task" class="space-y-2">
+          <input type="text" id="task-cron" placeholder="Cron 表达式" class="w-full p-2 border rounded" required />
+          <input type="text" id="task-source" placeholder="Source Image" class="w-full p-2 border rounded" required />
+          <input type="text" id="task-dest" placeholder="Destination Image" class="w-full p-2 border rounded" required />
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">创建</button>
         </form>
       </div>
 
@@ -82,7 +81,7 @@
           <button id="btn-load-task-ids" class="bg-gray-600 text-white px-3 py-2 rounded">加载任务</button>
         </div>
       </div>
-      <div id="task-log-container" class="bg-gray-900 text-green-400 p-3 h-64 overflow-y-auto font-mono text-sm"></div>
+      <div id="task-log-container" class="bg-gray-900 text-green-400 p-3 h-96 overflow-y-auto font-mono text-sm"></div>
     </div>
   </div>
   <script src="./js/app.js"></script>
