@@ -1,6 +1,7 @@
-FROM 192.168.1.118:5000/skopeo/stable:v1.20
+FROM 192.168.1.118:5000/skopeo/stable:latest
 LABEL MAINTAINER="kaisawind <wind.kaisa@gmail.com>"
 
 COPY bin/skopeoui /skopeoui
 
-CMD ["/skopeoui", "--log-level=info"]
+ENTRYPOINT ["/skopeoui"]
+CMD ["--log-level=info"]
