@@ -7,5 +7,6 @@ func (s *Server) WebMux() *http.ServeMux {
 	mux = ServeWebMux(mux)
 	mux = s.ServeLogMux(mux)
 	mux = s.ServeTaskMux(mux)
+	mux = s.ServeOnceMux(mux)
 	return mux
 }
