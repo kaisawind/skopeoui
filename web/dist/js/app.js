@@ -149,7 +149,7 @@ async function loadTasks() {
     btn.addEventListener("click", async () => {
       if (!confirm("确认删除？")) return;
       const id = btn.dataset.id;
-      await fetch(`/v1/task?id=${id}`, { method: "DELETE" });
+      await fetch(`${DELETE_TASK_URL}?id=${id}`, { method: "DELETE" });
       loadTasks();
     });
   });
