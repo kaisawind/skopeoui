@@ -34,6 +34,7 @@ func skopeoTask(ctx context.Context, source, destination string, outputCb func(t
 	scanner := bufio.NewScanner(rd)
 	for scanner.Scan() {
 		txt := scanner.Text()
+		logrus.Infof("%s", txt)
 		if outputCb != nil {
 			outputCb(txt)
 		}

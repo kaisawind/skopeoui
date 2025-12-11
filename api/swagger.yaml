@@ -1,0 +1,450 @@
+openapi: 3.0.3
+info:
+  title: SkopeoUI API
+  version: 1.0.0
+  description: SkopeoUI 后端 API 文档
+servers:
+  - url: localhost:8080
+
+schemes:
+  - http
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+tags:
+  - name: once
+    description: 一次任务
+  - name: task
+    description: 计划任务
+  - name: log
+    description: 任务日志
+
+
+paths:
+  /v1/once:
+    post:
+      tags:
+        - once
+      summary: 创建一次性任务
+      operationId: CreateOnce
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Once'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  source:
+                    type: string
+                  dest:
+                    type: string
+        '400':
+          description: 请求体解析失败
+    delete:
+      tags:
+        - once
+      summary: 删除一次性任务
+      operationId: DeleteOnce
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "ok"
+        '400':
+          description: id 为空
+
+  /v1/once/log:
+    post:
+      tags:
+        - once
+      summary: 获取一次性任务的日志流（SSE）
+      operationId: GetOnceLog
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE 流（text/event-stream）
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          description: id 为空
+        '404':
+          description: 任务未找到
+
+  /v1/onces:
+    get:
+      tags:
+        - once
+      summary: 列出所有一次性任务
+      operationId: ListOnce
+      responses:
+        '200':
+          description: 任务列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    source:
+                      type: string
+                    dest:
+                      type: string
+
+  /v1/task:
+    post:
+      tags:
+        - task
+      summary: 创建定时任务
+      operationId: CreateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: 请求体或 Cron 表达式错误
+        '500':
+          description: Cron 任务添加失败
+
+    put:
+      tags:
+        - task
+      summary: 更新定时任务
+      operationId: UpdateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: 请求体或任务不存在
+        '500':
+          description: Cron 任务更新失败
+
+    delete:
+      tags:
+        - task
+      summary: 删除定时任务
+      operationId: DeleteTask
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "ok"
+        '400':
+          description: id 无效或任务不存在
+
+    get:
+      tags:
+        - task
+      summary: 获取单个定时任务
+      operationId: GetTask
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: id 无效或任务不存在
+
+  /v1/tasks:
+    get:
+      tags:
+        - task
+      summary: 分页列出定时任务
+      operationId: ListTask
+      parameters:
+        - name: skip
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+      responses:
+        '200':
+          description: 任务分页列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    format: int32
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '400':
+          description: 查询参数错误
+
+  /v1/log:
+    get:
+      tags:
+        - log
+      summary: 获取单个日志
+      operationId: GetLog
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: 日志详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Log'
+        '400':
+          description: id 无效
+
+    delete:
+      tags:
+        - log
+      summary: 删除单个日志
+      operationId: DeleteLog
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "ok"
+        '400':
+          description: 删除失败
+
+  /v1/logs:
+    get:
+      tags:
+        - log
+      summary: 分页列出所有日志
+      operationId: ListLog
+      parameters:
+        - name: skip
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+      responses:
+        '200':
+          description: 日志分页列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    format: int32
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Log'
+        '400':
+          description: 查询参数错误
+
+  /v1/logs/task:
+    get:
+      tags:
+        - log
+      summary: 分页列出特定任务的所有日志
+      operationId: ListLogByTaskId
+      parameters:
+        - name: taskId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: skip
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+      responses:
+        '200':
+          description: 日志分页列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    format: int32
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Log'
+        '400':
+          description: taskId 为空或查询参数错误
+
+    delete:
+      tags:
+        - log
+      summary: 删除特定任务的所有日志
+      operationId: DeleteLogByTaskId
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "ok"
+        '400':
+          description: 删除失败
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        cron:
+          type: string
+          example: "0 */6 * * *"
+        source:
+          type: string
+          example: "docker.io/library/nginx:latest"
+        destination:
+          type: string
+          example: "quay.io/myorg/nginx:latest"
+
+    Log:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        taskId:
+          type: integer
+          format: int32
+        msg:
+          type: string
+        time:
+          type: integer
+          format: int64
+          description: Unix timestamp in nanoseconds
+
+    Once:
+      type: object
+      properties:
+        source:
+          type: string
+          example: "docker.io/library/nginx:latest"
+        destination:
+          type: string
+          example: "quay.io/myorg/nginx:latest"

@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json/v2"
+	"hash/fnv"
 	"net/http"
 	"strings"
 	"time"
@@ -26,8 +28,17 @@ func (s *Server) CreateOnce(rw http.ResponseWriter, r *http.Request) {
 		HttpError(rw, http.StatusBadRequest, err.Error())
 		return
 	}
+	hash := fnv.New128()
+	hash.Write([]byte(t.Source + t.Destination))
+	sum := hash.Sum(nil)
+	onceKey := hex.EncodeToString(sum)
 	go s.onceJob(context.Background(), t)
-	HttpResponse(rw, http.StatusOK, t)
+	out := map[string]string{
+		"id":     onceKey,
+		"source": t.Source,
+		"dest":   t.Destination,
+	}
+	HttpResponse(rw, http.StatusOK, out)
 }
 
 func (s *Server) GetOnceLog(rw http.ResponseWriter, r *http.Request) {
