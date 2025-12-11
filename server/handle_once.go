@@ -15,7 +15,7 @@ import (
 
 func (s *Server) ServeOnceMux(mux *http.ServeMux) *http.ServeMux {
 	mux.HandleFunc("POST /v1/once", s.CreateOnce)
-	mux.HandleFunc("POST /v1/once/log", s.GetOnceLog)
+	mux.HandleFunc("GET /v1/once/log", s.GetOnceLog)
 	mux.HandleFunc("DELETE /v1/once", s.DeleteOnce)
 	mux.HandleFunc("GET /v1/onces", s.ListOnce)
 	return mux
@@ -63,8 +63,10 @@ func (s *Server) GetOnceLog(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, "Streaming unsupported", http.StatusInternalServerError)
 		return
 	}
-	s.rds.Store(sid+xid.New().String(), rw)
-	timer := time.NewTicker(10 * time.Hour)
+	rdKey := sid + xid.New().String()
+	s.rds.Store(rdKey, rw)
+	defer s.rds.Delete(rdKey)
+	timer := time.NewTicker(1 * time.Hour)
 	defer timer.Stop()
 	done := make(chan struct{})
 	defer close(done)

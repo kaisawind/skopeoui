@@ -1,206 +1,205 @@
-// Tab切换
-function showTab(tabName) {
-  document
-    .querySelectorAll(".tab-content")
-    .forEach((el) => el.classList.add("hidden"));
-  document
-    .querySelectorAll(".tab-btn")
-    .forEach((btn) => btn.classList.remove("active"));
-  document.getElementById(`tab-${tabName}`).classList.remove("hidden");
-  document.querySelector(`[data-tab="${tabName}"]`).classList.add("active");
+// ---------- 全局状态 ----------
+const BASE_URL = "http://localhost:8080";
+const DELETE_LOG_URL = BASE_URL + "/v1/log";
+const DELETE_LOG_BY_TASK_ID_URL = BASE_URL + "/v1/logs/task";
+const GET_LOG_URL = BASE_URL + "/v1/log";
+const LIST_LOG_URL = BASE_URL + "/v1/logs";
+const LIST_LOG_BY_TASK_ID_URL = BASE_URL + "/v1/logs/task";
+const CREATE_ONCE_URL = BASE_URL + "/v1/once";
+const GET_ONCE_LOG_URL = BASE_URL + "/v1/once/log";
+const DELETE_ONCE_URL = BASE_URL + "/v1/once";
+const LIST_ONCE_URL = BASE_URL + "/v1/onces";
+const CREATE_TASK_URL = BASE_URL + "/v1/task";
+const DELETE_TASK_URL = BASE_URL + "/v1/task";
+const UPDATE_TASK_URL = BASE_URL + "/v1/task";
+const GET_TASK_URL = BASE_URL + "/v1/task";
+const LIST_TASK_URL = BASE_URL + "/v1/tasks";
 
-  if (tabName === "task") listTasks();
-  if (tabName === "log") listAllLogs();
-}
+let currentPage = 0;
+const limit = 10;
 
-// —————— Once 相关 ——————
-let currentLogReader = null;
-let currentLogId = null;
-
-// 加载一次性任务列表
-async function loadOnceList() {
-  const res = await fetch("/v1/onces");
-  const tasks = await res.json();
-  const select = document.getElementById("once-select");
-  select.innerHTML = '<option value="">-- 请选择一个任务 --</option>';
-  tasks.forEach((task) => {
-    const opt = document.createElement("option");
-    opt.value = task.id;
-    opt.textContent = `${task.id} | ${task.source} → ${task.dest}`;
-    select.appendChild(opt);
+// ---------- Tab 切换 ----------
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document
+      .querySelectorAll(".tab-content")
+      .forEach((el) => el.classList.add("hidden"));
+    document
+      .querySelectorAll(".tab-btn")
+      .forEach((b) => b.classList.remove("font-bold", "text-blue-600"));
+    const tab = btn.dataset.tab;
+    document.getElementById(`tab-${tab}`).classList.remove("hidden");
+    btn.classList.add("font-bold", "text-blue-600");
   });
-}
+});
 
-function refreshOnceList() {
-  loadOnceList();
-}
-
-// 下拉选择变更
-function onOnceSelect() {
-  const id = document.getElementById("once-select").value;
-  document.getElementById("btn-start-log").disabled = !id;
-}
-
-// 启动日志
-function startOnceLog() {
-  const id = document.getElementById("once-select").value;
-  if (!id) return;
-  viewOnceLog(id);
-}
-
-// 查看 SSE 日志（使用 fetch + ReadableStream，因接口是 POST）
-async function viewOnceLog(id) {
-  stopOnceLog();
-  const logEl = document.getElementById("once-log-output");
-  logEl.innerHTML = `⏳ 正在连接日志流 (ID: ${id})...\n`;
-  logEl.scrollTop = logEl.scrollHeight;
-
-  try {
-    const res = await fetch(`/v1/once/log?id=${encodeURIComponent(id)}`, {
-      method: "POST",
-    });
-    if (!res.ok) {
-      logEl.innerHTML += `❌ 日志请求失败: ${res.status} ${res.statusText}\n`;
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    currentLogReader = reader;
-    currentLogId = id;
-
-    logEl.innerHTML += `✅ 连接成功，开始接收日志...\n`;
-    logEl.scrollTop = logEl.scrollHeight;
-
-    const read = async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const text = decoder.decode(value, { stream: true });
-          logEl.innerHTML += text;
-          logEl.scrollTop = logEl.scrollHeight;
-        }
-        logEl.innerHTML += `\nℹ️ 日志流已结束\n`;
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          logEl.innerHTML += `\n📡 读取错误: ${err.message}\n`;
-        }
-      }
-    };
-    read();
-  } catch (err) {
-    logEl.innerHTML += `\n💥 启动失败: ${err.message}\n`;
-  }
-}
-
-// 停止日志
-function stopOnceLog() {
-  if (currentLogReader) {
-    currentLogReader.cancel();
-    currentLogReader = null;
-    currentLogId = null;
-  }
-  const logEl = document.getElementById("once-log-output");
-  if (logEl.innerHTML.trim() === "") {
-    logEl.innerHTML = "日志已停止。";
-  }
-}
-
-// 创建一次性任务（可选）
-async function createOnce() {
+// ---------- 一次性任务 ----------
+document.getElementById("form-once").addEventListener("submit", async (e) => {
+  e.preventDefault();
   const source = document.getElementById("once-source").value;
   const dest = document.getElementById("once-dest").value;
-  if (!source || !dest) {
-    alert("请输入源和目标镜像");
-    return;
-  }
-  const res = await fetch("/v1/once", {
+  const res = await fetch(CREATE_ONCE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ source, destination: dest }),
   });
-  if (res.ok) {
-    alert("任务已提交");
-    document.getElementById("once-source").value = "";
-    document.getElementById("once-dest").value = "";
-    loadOnceList(); // 自动刷新列表
+  const data = await res.json();
+  if (data.success) {
+    if (data.data.id) {
+        const logContainer = document.getElementById("once-log-container");
+        logContainer.innerHTML = "";
+        onceEventSource = new EventSource(`${GET_ONCE_LOG_URL}?id=${data.data.id}`);
+        onceEventSource.onmessage = (ev) => {
+          const log = ev.data;
+          const safeLog = log
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\n/g, "<br>");
+          logContainer.innerHTML += safeLog + "<br>";
+          logContainer.scrollTop = logContainer.scrollHeight;
+        };
+    }
+    loadOnceTaskIds(); // 自动刷新下拉
   } else {
-    alert("提交失败: " + (await res.text()));
+    alert("创建失败: " + data.error);
   }
+});
+
+async function loadOnceTaskIds() {
+  const res = await fetch(LIST_ONCE_URL);
+  const onceList = await res.json();
+  const { data } = onceList;
+  const select = document.getElementById("once-id-select");
+  select.innerHTML = '<option value="">请选择任务 ID</option>';
+  data.forEach((item) => {
+    const opt = document.createElement("option");
+    opt.value = item.id;
+    opt.textContent = `#${item.id} ${item.source} → ${item.dest}`;
+    select.appendChild(opt);
+  });
 }
 
-// 初始化
-loadOnceList();
+document
+  .getElementById("btn-load-once-ids")
+  .addEventListener("click", loadOnceTaskIds);
 
-// —————— Task 相关 ——————
-async function createTask() {
+let onceEventSource = null;
+// 一次性任务日志 SSE
+document.getElementById("once-id-select").addEventListener("change", (e) => {
+  const id = e.target.value;
+  if (onceEventSource) onceEventSource.close();
+  if (!id) return;
+  const logContainer = document.getElementById("once-log-container");
+  logContainer.innerHTML = "";
+  onceEventSource = new EventSource(`${GET_ONCE_LOG_URL}?id=${id}`);
+  onceEventSource.onmessage = (ev) => {
+    const log = ev.data;
+    const safeLog = log
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
+    logContainer.innerHTML += safeLog + "<br>";
+    logContainer.scrollTop = logContainer.scrollHeight;
+  };
+});
+loadOnceTaskIds(); // 初始加载
+
+// ---------- 定时任务 ----------
+document.getElementById("form-task").addEventListener("submit", async (e) => {
+  e.preventDefault();
   const cron = document.getElementById("task-cron").value;
   const source = document.getElementById("task-source").value;
   const dest = document.getElementById("task-dest").value;
-  await fetch("/v1/task", {
+  const res = await fetch(CREATE_TASK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cron, source, destination: dest }),
   });
-  listTasks();
+  const data = await res.json();
+  if (data.success) {
+    alert("定时任务创建成功");
+    loadTasks();
+  } else {
+    alert("失败: " + data.error);
+  }
+});
+
+async function loadTasks() {
+  const res = await fetch(
+    `${LIST_TASK_URL}?skip=${currentPage * limit}&limit=${limit}`
+  );
+  const data = await res.json();
+  if (!data.success) return;
+  const tbody = document.getElementById("task-list");
+  tbody.innerHTML = "";
+  data.data.items.forEach((t) => {
+    const tr = document.createElement("tr");
+    tr.className = "border-b";
+    tr.innerHTML = `<td>${t.id}</td><td>${t.cron}</td><td>${t.source}</td><td>${t.destination}</td>
+          <td><button class="text-red-600 delete-btn" data-id="${t.id}">删除</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById("page-info").textContent = `第 ${currentPage + 1} 页`;
+  // 绑定删除
+  document.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("确认删除？")) return;
+      const id = btn.dataset.id;
+      await fetch(`/v1/task?id=${id}`, { method: "DELETE" });
+      loadTasks();
+    });
+  });
 }
 
-async function updateTask() {
-  const cron = document.getElementById("task-cron").value;
-  const source = document.getElementById("task-source").value;
-  const dest = document.getElementById("task-dest").value;
-  // 假设 id 在 source 字段中不现实，此处简化：前端需先查任务再更新
-  alert("更新需先获取任务详情，此处略");
+document.getElementById("btn-prev").addEventListener("click", () => {
+  if (currentPage > 0) {
+    currentPage--;
+    loadTasks();
+  }
+});
+document.getElementById("btn-next").addEventListener("click", () => {
+  currentPage++;
+  loadTasks();
+});
+document
+  .getElementById("btn-refresh-tasks")
+  .addEventListener("click", loadTasks);
+loadTasks(); // 初始加载
+
+// ---------- 定时任务日志 ----------
+async function loadTaskIdsForLog() {
+  const res = await fetch(`${LIST_TASK_URL}?limit=1000`); // 获取全部用于下拉
+  const data = await res.json();
+  const select = document.getElementById("task-id-select");
+  select.innerHTML = '<option value="">请选择任务 ID</option>';
+  data.data.items.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = `#${t.id} ${t.source} → ${t.destination}`;
+    select.appendChild(opt);
+  });
 }
 
-async function listTasks() {
-  const skip = document.getElementById("task-skip").value || 0;
-  const limit = document.getElementById("task-limit").value || 10;
-  const res = await fetch(`/v1/tasks?skip=${skip}&limit=${limit}`);
-  const { items } = await res.json();
-  const listEl = document.getElementById("task-list");
-  listEl.innerHTML = items
-    .map(
-      (t) => `
-    <div class="flex justify-between items-center bg-gray-100 p-3 rounded">
-      <div>ID: ${t.id} | ${t.cron} | ${t.source} → ${t.destination}</div>
-      <button onclick="deleteTask(${t.id})" class="text-red-600">删除</button>
-    </div>
-  `
-    )
-    .join("");
-}
+document
+  .getElementById("btn-load-task-ids")
+  .addEventListener("click", loadTaskIdsForLog);
+loadTaskIdsForLog();
 
-async function deleteTask(id) {
-  if (!confirm("确认删除？")) return;
-  await fetch(`/v1/task?id=${id}`, { method: "DELETE" });
-  listTasks();
-}
-
-// —————— Log 相关 ——————
-async function listAllLogs() {
-  const res = await fetch("/v1/logs?limit=50");
-  const { items } = await res.json();
-  renderLogs(items);
-}
-
-async function listLogsByTask() {
-  const taskId = document.getElementById("log-taskId").value;
-  if (!taskId) return alert("请输入任务ID");
-  const res = await fetch(`/v1/logs/task?taskId=${taskId}&limit=50`);
-  const { items } = await res.json();
-  renderLogs(items);
-}
-
-function renderLogs(logs) {
-  const logEl = document.getElementById("log-list");
-  logEl.innerHTML = logs
-    .map(
-      (log) =>
-        `<div class="log-line">[${new Date(log.time / 1e6).toISOString()}] ${
-          log.msg
-        }</div>`
-    )
-    .join("");
-}
+let taskEventSource = null;
+document.getElementById("task-id-select").addEventListener("change", (e) => {
+  const id = e.target.value;
+  if (taskEventSource) taskEventSource.close();
+  if (!id) return;
+  const logContainer = document.getElementById("task-log-container");
+  logContainer.innerHTML = "";
+  taskEventSource = new EventSource(`${GET_TASK_LOG_URL}?id=${id}`);
+  taskEventSource.onmessage = (ev) => {
+    const log = JSON.parse(ev.data);
+    logContainer.innerHTML += `[${new Date(log.time * 1000).toISOString()}] ${
+      log.msg
+    }\n`;
+    logContainer.scrollTop = logContainer.scrollHeight;
+  };
+});

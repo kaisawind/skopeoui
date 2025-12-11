@@ -5,110 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SkopeoUI</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#3b82f6',
-            success: '#10b981',
-            danger: '#ef4444'
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    .log-line { font-family: monospace; white-space: pre-wrap; }
-  </style>
 </head>
-<body class="bg-gray-50 p-4 md:p-6">
-  <div class="max-w-6xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">SkopeoUI 控制台</h1>
+<body class="bg-gray-100 p-6">
+  <h1 class="text-2xl font-bold mb-4">Skopeo UI</h1>
 
-    <!-- Tabs -->
-    <div class="border-b border-gray-200 mb-6">
-      <nav class="flex space-x-4">
-        <button onclick="showTab('once')" class="tab-btn active" data-tab="once">一次性任务</button>
-        <button onclick="showTab('task')" class="tab-btn" data-tab="task">定时任务</button>
-        <button onclick="showTab('log')" class="tab-btn" data-tab="log">日志</button>
-      </nav>
-    </div>
-
-    <!-- Tab Contents -->
-    <div id="tab-once" class="tab-content block">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-semibold">一次性任务</h2>
-        <button onclick="refreshOnceList()" class="text-sm bg-gray-200 px-3 py-1 rounded">刷新列表</button>
-      </div>
-
-      <!-- Once List as Select -->
-      <div class="bg-white p-4 rounded shadow mb-6">
-        <label class="block text-sm font-medium mb-2">选择任务查看日志</label>
-        <select id="once-select" class="w-full border p-2 rounded" onchange="onOnceSelect()">
-          <option value="">-- 请选择一个任务 --</option>
-        </select>
-        <div class="mt-3 flex space-x-2">
-          <button onclick="startOnceLog()" class="bg-primary text-white px-4 py-2 rounded" id="btn-start-log" disabled>查看日志</button>
-          <button onclick="stopOnceLog()" class="bg-red-100 text-red-700 px-4 py-2 rounded">停止</button>
-        </div>
-      </div>
-
-      <!-- Create Once (Optional) -->
-      <details class="bg-gray-50 p-4 rounded mb-6">
-        <summary class="font-medium cursor-pointer">+ 新建一次性任务</summary>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-          <input id="once-source" type="text" placeholder="Source (e.g. docker.io/nginx:latest)" class="border p-2 rounded"/>
-          <input id="once-dest" type="text" placeholder="Destination" class="border p-2 rounded"/>
-        </div>
-        <button onclick="createOnce()" class="mt-3 bg-green-600 text-white px-4 py-2 rounded">执行同步</button>
-      </details>
-
-      <!-- Log Output -->
-      <div>
-        <h3 class="font-medium mb-2">实时日志</h3>
-        <div id="once-log-output" class="bg-black text-green-300 p-3 rounded font-mono text-sm h-64 overflow-y-auto whitespace-pre-wrap"></div>
-      </div>
-    </div>
-
-    <div id="tab-task" class="tab-content hidden">
-      <!-- Create/Update Task -->
-      <div class="bg-white p-4 rounded shadow mb-6">
-        <h2 class="text-lg font-semibold mb-3">管理定时任务</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input id="task-cron" type="text" placeholder="Cron 表达式 (e.g. 0 */6 * * *)" class="border p-2 rounded"/>
-          <input id="task-source" type="text" placeholder="Source" class="border p-2 rounded"/>
-          <input id="task-dest" type="text" placeholder="Destination" class="border p-2 rounded"/>
-        </div>
-        <div class="mt-3 flex space-x-2">
-          <button onclick="createTask()" class="bg-primary text-white px-4 py-2 rounded">创建</button>
-          <button onclick="updateTask()" class="bg-gray-500 text-white px-4 py-2 rounded">更新</button>
-        </div>
-      </div>
-
-      <!-- Task List -->
-      <div>
-        <h2 class="text-lg font-semibold mb-3">任务列表（支持分页）</h2>
-        <div class="flex space-x-2 mb-3">
-          <input id="task-skip" type="number" value="0" class="w-20 border p-1 rounded"/>
-          <input id="task-limit" type="number" value="10" class="w-20 border p-1 rounded"/>
-          <button onclick="listTasks()" class="bg-gray-200 px-3 py-1 rounded">查询</button>
-        </div>
-        <div id="task-list" class="space-y-2"></div>
-      </div>
-    </div>
-
-    <div id="tab-log" class="tab-content hidden">
-      <div class="mb-4">
-        <label class="mr-2">按任务 ID 查日志:</label>
-        <input id="log-taskId" type="number" class="border p-1 rounded w-32"/>
-        <button onclick="listLogsByTask()" class="ml-2 bg-gray-200 px-3 py-1 rounded">查询</button>
-        <button onclick="listAllLogs()" class="ml-2 bg-gray-200 px-3 py-1 rounded">全部日志</button>
-      </div>
-      <div id="log-list" class="bg-white p-4 rounded shadow max-h-96 overflow-y-auto font-mono text-sm"></div>
-    </div>
+  <!-- Tab Navigation -->
+  <div class="flex space-x-4 mb-6 border-b">
+    <button class="tab-btn font-medium" data-tab="once">一次性任务</button>
+    <button class="tab-btn font-medium" data-tab="task">定时任务</button>
+    <button class="tab-btn font-medium" data-tab="logs">任务日志</button>
   </div>
 
+  <!-- Tab Contents -->
+  <div id="tab-contents">
+    <!-- 一次性任务 -->
+    <div id="tab-once" class="tab-content">
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <h2 class="text-lg font-semibold mb-2">新建一次性任务</h2>
+        <form id="form-once" class="space-y-2">
+          <input type="text" id="once-source" placeholder="Source Image" class="w-full p-2 border rounded" required />
+          <input type="text" id="once-dest" placeholder="Destination Image" class="w-full p-2 border rounded" required />
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">提交</button>
+        </form>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-lg font-semibold mb-2">查看日志</h2>
+        <div class="flex space-x-2 mb-2">
+          <select id="once-id-select" class="border p-2 rounded grow">
+            <option value="">请选择一次性任务 ID</option>
+          </select>
+          <button id="btn-load-once-ids" class="bg-gray-600 text-white px-3 py-2 rounded">刷新列表</button>
+        </div>
+        <div id="once-log-container" class="bg-gray-900 text-green-400 p-3 h-96 overflow-y-auto font-mono text-sm"></div>
+      </div>
+    </div>
+
+    <!-- 定时任务 -->
+    <div id="tab-task" class="tab-content hidden">
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <h2 class="text-lg font-semibold mb-2">新建定时任务</h2>
+        <form id="form-task" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <input type="text" id="task-cron" placeholder="Cron 表达式" class="p-2 border rounded" required />
+          <input type="text" id="task-source" placeholder="Source Image" class="p-
+          2 border rounded" required />
+          <input type="text" id="task-dest" placeholder="Destination Image" class="p-2 border rounded" required />
+          <button type="submit" class="col-span-2 bg-blue-600 text-white px-4 py-2 rounded">创建</button>
+        </form>
+      </div>
+
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="text-lg font-semibold mb-2">定时任务列表</h2>
+        <div class="flex justify-between items-center mb-2">
+          <div>
+            <button id="btn-prev" class="bg-gray-200 px-3 py-1 rounded">&lt;</button>
+            <span id="page-info" class="mx-2">第 1 页</span>
+            <button id="btn-next" class="bg-gray-200 px-3 py-1 rounded">&gt;</button>
+          </div>
+          <button id="btn-refresh-tasks" class="bg-gray-600 text-white px-3 py-1 rounded">刷新</button>
+        </div>
+        <table class="w-full text-sm">
+          <thead><tr class="border-b"><th>ID</th><th>Cron</th><th>Source</th><th>Dest</th><th>操作</th></tr></thead>
+          <tbody id="task-list"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 日志查看（定时任务） -->
+    <div id="tab-logs" class="tab-content hidden">
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <h2 class="text-lg font-semibold mb-2">选择定时任务查看日志</h2>
+        <div class="flex space-x-2">
+          <select id="task-id-select" class="border p-2 rounded grow">
+            <option value="">请选择任务 ID</option>
+          </select>
+          <button id="btn-load-task-ids" class="bg-gray-600 text-white px-3 py-2 rounded">加载任务</button>
+        </div>
+      </div>
+      <div id="task-log-container" class="bg-gray-900 text-green-400 p-3 h-64 overflow-y-auto font-mono text-sm"></div>
+    </div>
+  </div>
   <script src="./js/app.js"></script>
 </body>
 </html>
