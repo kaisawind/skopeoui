@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -8,14 +9,17 @@ import (
 	"github.com/kaisawind/skopeoui/internal/http"
 	pkgdb "github.com/kaisawind/skopeoui/pkg/db"
 	pkgsvc "github.com/kaisawind/skopeoui/pkg/service"
+	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
 	opts        *Options
-	quit        chan struct{}
+	crons       *cron.Cron
+	tasks       sync.Map
 	db          pkgdb.IDB
 	httpService pkgsvc.IService
+	quit        chan struct{}
 }
 
 func NewServer(ops ...*Options) *Server {
@@ -24,8 +28,9 @@ func NewServer(ops ...*Options) *Server {
 		o.Apply(opts)
 	}
 	return &Server{
-		opts: opts,
-		quit: make(chan struct{}),
+		opts:  opts,
+		crons: cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger))),
+		quit:  make(chan struct{}),
 	}
 }
 
@@ -35,12 +40,20 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Serve() (err error) {
-	err = s.initdb()
+	err = s.initDB()
 	if err != nil {
 		logrus.WithError(err).Error("init db failed")
 		return
 	}
 	logrus.Info("db initialized")
+
+	// do cron job
+	err = s.doCron()
+	if err != nil {
+		logrus.WithError(err).Error("do cron error")
+		return
+	}
+	logrus.Info("cron job done")
 
 	var wg sync.WaitGroup
 	wg.Go(func() {
@@ -64,10 +77,26 @@ func (s *Server) Close() {
 	}
 }
 
-func (s *Server) initdb() (err error) {
+func (s *Server) initDB() (err error) {
 	s.db, err = db.New()
 	if err != nil {
 		return
+	}
+	return
+}
+
+func (s *Server) doCron() (err error) {
+	ctx := context.Background()
+	count, tasks, err := s.db.ListTask(ctx, 0, 0)
+	if err != nil {
+		return
+	}
+	logrus.Infof("list %d tasks", count)
+	for _, t := range tasks {
+		err = s.createTaskCallback(ctx, t)
+		if err != nil {
+			logrus.WithError(err).Errorf("create task callback failed, task: %v", t)
+		}
 	}
 	return
 }
@@ -83,6 +112,10 @@ func (s *Server) doHttp() (err error) {
 	if err != nil {
 		return
 	}
+	httpSvc := s.httpService.(*http.Service)
+	httpSvc.RegisterCreateTaskCallback(s.createTaskCallback)
+	httpSvc.RegisterDeleteTaskCallback(s.deleteTaskCallback)
+	httpSvc.RegisterUpdateTaskCallback(s.updateTaskCallback)
 	<-s.quit
 	s.httpService.Close()
 	return

@@ -31,6 +31,20 @@ func (s *Service) CreateTask(rw http.ResponseWriter, r *http.Request) {
 		HttpError(rw, http.StatusBadRequest, err.Error())
 		return
 	}
+	s.callbacks.Range(func(key, value any) bool {
+		cb, ok := value.(CreateTaskCallback)
+		if ok {
+			err = cb(ctx, t)
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
+	if err != nil {
+		HttpError(rw, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	HttpResponse(rw, http.StatusOK, t)
 }
@@ -43,9 +57,28 @@ func (s *Service) DeleteTask(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	iid, _ := strconv.Atoi(sid)
-	err := s.db.DeleteTask(ctx, int32(iid))
+	t, err := s.db.GetTask(ctx, int32(iid))
 	if err != nil {
 		HttpError(rw, http.StatusBadRequest, err.Error())
+		return
+	}
+	err = s.db.DeleteTask(ctx, int32(iid))
+	if err != nil {
+		HttpError(rw, http.StatusBadRequest, err.Error())
+		return
+	}
+	s.callbacks.Range(func(key, value any) bool {
+		cb, ok := value.(DeleteTaskCallback)
+		if ok {
+			err = cb(ctx, t)
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
+	if err != nil {
+		HttpError(rw, http.StatusInternalServerError, err.Error())
 		return
 	}
 	HttpResponse(rw, http.StatusOK, "ok")
@@ -62,6 +95,20 @@ func (s *Service) UpdateTask(rw http.ResponseWriter, r *http.Request) {
 	err = s.db.UpdateTask(ctx, t)
 	if err != nil {
 		HttpError(rw, http.StatusBadRequest, err.Error())
+		return
+	}
+	s.callbacks.Range(func(key, value any) bool {
+		cb, ok := value.(UpdateTaskCallback)
+		if ok {
+			err = cb(ctx, t)
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
+	if err != nil {
+		HttpError(rw, http.StatusInternalServerError, err.Error())
 		return
 	}
 	HttpResponse(rw, http.StatusOK, t)
