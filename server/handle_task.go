@@ -1,14 +1,17 @@
-package http
+package server
 
 import (
+	"context"
 	"encoding/json/v2"
 	"net/http"
 	"strconv"
 
 	"github.com/kaisawind/skopeoui/pkg/pb"
+	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
 )
 
-func (s *Service) ServeTaskMux(mux *http.ServeMux) *http.ServeMux {
+func (s *Server) ServeTaskMux(mux *http.ServeMux) *http.ServeMux {
 	mux.HandleFunc("POST /v1/task", s.CreateTask)
 	mux.HandleFunc("DELETE /v1/task", s.DeleteTask)
 	mux.HandleFunc("PUT /v1/task", s.UpdateTask)
@@ -17,7 +20,7 @@ func (s *Service) ServeTaskMux(mux *http.ServeMux) *http.ServeMux {
 	return mux
 }
 
-func (s *Service) CreateTask(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) CreateTask(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	t := &pb.Task{}
 	err := json.UnmarshalRead(r.Body, t)
@@ -25,31 +28,25 @@ func (s *Service) CreateTask(rw http.ResponseWriter, r *http.Request) {
 		HttpError(rw, http.StatusBadRequest, err.Error())
 		return
 	}
-
 	err = s.db.CreateTask(ctx, t)
 	if err != nil {
 		HttpError(rw, http.StatusBadRequest, err.Error())
 		return
 	}
-	s.callbacks.Range(func(key, value any) bool {
-		cb, ok := value.(CreateTaskCallback)
-		if ok {
-			err = cb(ctx, t)
-			if err != nil {
-				return false
-			}
-		}
-		return true
+	eid, err := s.crons.AddFunc(t.Cron, func() {
+		s.taskJob(context.Background(), t)
 	})
 	if err != nil {
+		logrus.WithError(err).Error("add cron job failed")
 		HttpError(rw, http.StatusInternalServerError, err.Error())
 		return
 	}
-
+	// store task id and cron job id
+	s.tasks.Store(t.Id, eid)
 	HttpResponse(rw, http.StatusOK, t)
 }
 
-func (s *Service) DeleteTask(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) DeleteTask(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sid := r.URL.Query().Get("id")
 	if sid == "" {
@@ -67,24 +64,18 @@ func (s *Service) DeleteTask(rw http.ResponseWriter, r *http.Request) {
 		HttpError(rw, http.StatusBadRequest, err.Error())
 		return
 	}
-	s.callbacks.Range(func(key, value any) bool {
-		cb, ok := value.(DeleteTaskCallback)
-		if ok {
-			err = cb(ctx, t)
-			if err != nil {
-				return false
-			}
-		}
-		return true
-	})
-	if err != nil {
-		HttpError(rw, http.StatusInternalServerError, err.Error())
-		return
+	// get cron job id
+	eid, ok := s.tasks.Load(t.Id)
+	if ok {
+		// delete cron job
+		s.crons.Remove(eid.(cron.EntryID))
+		// delete task id and cron job id
+		s.tasks.Delete(t.Id)
 	}
 	HttpResponse(rw, http.StatusOK, "ok")
 }
 
-func (s *Service) UpdateTask(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) UpdateTask(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	t := &pb.Task{}
 	err := json.UnmarshalRead(r.Body, t)
@@ -97,24 +88,24 @@ func (s *Service) UpdateTask(rw http.ResponseWriter, r *http.Request) {
 		HttpError(rw, http.StatusBadRequest, err.Error())
 		return
 	}
-	s.callbacks.Range(func(key, value any) bool {
-		cb, ok := value.(UpdateTaskCallback)
-		if ok {
-			err = cb(ctx, t)
-			if err != nil {
-				return false
-			}
-		}
-		return true
+	eid, ok := s.tasks.Load(t.Id)
+	if ok {
+		s.crons.Remove(eid.(cron.EntryID))
+	}
+	eid, err = s.crons.AddFunc(t.Cron, func() {
+		s.taskJob(context.Background(), t)
 	})
 	if err != nil {
+		logrus.WithError(err).Error("add cron job failed")
 		HttpError(rw, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// store task id and cron job id
+	s.tasks.Store(t.Id, eid)
 	HttpResponse(rw, http.StatusOK, t)
 }
 
-func (s *Service) GetTask(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) GetTask(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sid := r.URL.Query().Get("id")
 	if sid == "" {
@@ -130,7 +121,7 @@ func (s *Service) GetTask(rw http.ResponseWriter, r *http.Request) {
 	HttpResponse(rw, http.StatusOK, t)
 }
 
-func (s *Service) ListTask(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) ListTask(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	iskip := 0
 	sskip := r.URL.Query().Get("skip")

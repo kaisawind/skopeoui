@@ -13,3 +13,8 @@ type Log struct {
 	Msg    string `json:"msg"`    // log message
 	Time   int64  `json:"time"`   // log time
 }
+
+type Once struct {
+	Source      string `json:"source"`      // source image name
+	Destination string `json:"destination"` // destination image name
+}

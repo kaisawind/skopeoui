@@ -15,6 +15,8 @@ func TestSkopeoTask(t *testing.T) {
 	}
 	err := skopeoTask(ctx, task.Source, task.Destination, func(txt string) {
 		t.Logf("skopeoTask output: %s", txt)
+	}, func() {
+		t.Logf("skopeoTask exit")
 	})
 	if err != nil {
 		t.Fatalf("skopeoTask failed: %v", err)

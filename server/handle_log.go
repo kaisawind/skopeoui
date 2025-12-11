@@ -1,11 +1,11 @@
-package http
+package server
 
 import (
 	"net/http"
 	"strconv"
 )
 
-func (s *Service) ServeLogMux(mux *http.ServeMux) *http.ServeMux {
+func (s *Server) ServeLogMux(mux *http.ServeMux) *http.ServeMux {
 	mux.HandleFunc("DELETE /v1/log", s.DeleteLog)
 	mux.HandleFunc("DELETE /v1/logs/task", s.DeleteLogByTaskId)
 	mux.HandleFunc("GET /v1/log", s.GetLog)
@@ -14,7 +14,7 @@ func (s *Service) ServeLogMux(mux *http.ServeMux) *http.ServeMux {
 	return mux
 }
 
-func (s *Service) DeleteLog(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) DeleteLog(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sid := r.URL.Query().Get("id")
 	if sid == "" {
@@ -30,7 +30,7 @@ func (s *Service) DeleteLog(rw http.ResponseWriter, r *http.Request) {
 	HttpResponse(rw, http.StatusOK, "ok")
 }
 
-func (s *Service) DeleteLogByTaskId(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) DeleteLogByTaskId(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sid := r.URL.Query().Get("id")
 	if sid == "" {
@@ -46,7 +46,7 @@ func (s *Service) DeleteLogByTaskId(rw http.ResponseWriter, r *http.Request) {
 	HttpResponse(rw, http.StatusOK, "ok")
 }
 
-func (s *Service) GetLog(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) GetLog(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	sid := r.URL.Query().Get("id")
 	if sid == "" {
@@ -62,7 +62,7 @@ func (s *Service) GetLog(rw http.ResponseWriter, r *http.Request) {
 	HttpResponse(rw, http.StatusOK, t)
 }
 
-func (s *Service) ListLog(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) ListLog(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	iskip := 0
 	sskip := r.URL.Query().Get("skip")
@@ -86,7 +86,7 @@ func (s *Service) ListLog(rw http.ResponseWriter, r *http.Request) {
 	HttpResponse(rw, http.StatusOK, out)
 }
 
-func (s *Service) ListLogByTaskId(rw http.ResponseWriter, r *http.Request) {
+func (s *Server) ListLogByTaskId(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	iskip := 0
 	sskip := r.URL.Query().Get("skip")

@@ -1,8 +1,8 @@
-package http
+package server
 
 import "net/http"
 
-func (s *Service) WebMux() *http.ServeMux {
+func (s *Server) WebMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux = ServeWebMux(mux)
 	mux = s.ServeLogMux(mux)

@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func skopeoTask(ctx context.Context, source, destination string, cb func(txt string)) (err error) {
+func skopeoTask(ctx context.Context, source, destination string, outputCb func(txt string), exitCb func()) (err error) {
 	// skopeo copy --multi-arch=all --dest-tls-verify=false --retry-delay=3s docker://m.daocloud.io/docker.io/nginx:alpine docker://192.168.1.118:5000/nginx:alpine
 	cmd := exec.CommandContext(ctx, "skopeo", "copy", "--multi-arch=all", "--dest-tls-verify=false", "--retry-delay=3s", fmt.Sprintf("docker://%s", source), fmt.Sprintf("docker://%s", destination))
 	logrus.Infof("skopeo copy command: %s", cmd.String())
@@ -34,7 +34,9 @@ func skopeoTask(ctx context.Context, source, destination string, cb func(txt str
 	scanner := bufio.NewScanner(rd)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		cb(txt)
+		if outputCb != nil {
+			outputCb(txt)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logrus.WithError(err).Warn("scanner error")
@@ -42,5 +44,9 @@ func skopeoTask(ctx context.Context, source, destination string, cb func(txt str
 	}
 	// wait for command to finish
 	cmd.Wait()
+	// call exit callback
+	if exitCb != nil {
+		exitCb()
+	}
 	return
 }

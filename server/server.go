@@ -2,11 +2,10 @@ package server
 
 import (
 	"context"
-	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/kaisawind/skopeoui/internal/db"
-	"github.com/kaisawind/skopeoui/internal/http"
 	pkgdb "github.com/kaisawind/skopeoui/pkg/db"
 	pkgsvc "github.com/kaisawind/skopeoui/pkg/service"
 	"github.com/robfig/cron/v3"
@@ -14,12 +13,15 @@ import (
 )
 
 type Server struct {
-	opts        *Options
-	crons       *cron.Cron
-	tasks       sync.Map
-	db          pkgdb.IDB
-	httpService pkgsvc.IService
-	quit        chan struct{}
+	opts       *Options
+	crons      *cron.Cron
+	tasks      sync.Map // cron <-> task id
+	onces      sync.Map // hash <-> once task
+	rds        sync.Map //
+	dones      sync.Map // hash <-> once task done
+	db         pkgdb.IDB
+	httpServer *http.Server
+	quit       chan struct{}
 }
 
 func NewServer(ops ...*Options) *Server {
@@ -69,8 +71,8 @@ func (s *Server) Serve() (err error) {
 }
 
 func (s *Server) Close() {
-	if s.httpService != nil {
-		s.httpService.Close()
+	if s.httpServer != nil {
+		s.httpServer.Shutdown(context.Background())
 	}
 	if s.db != nil {
 		s.db.Close()
@@ -93,30 +95,35 @@ func (s *Server) doCron() (err error) {
 	}
 	logrus.Infof("list %d tasks", count)
 	for _, t := range tasks {
-		err = s.createTaskCallback(ctx, t)
-		if err != nil {
-			logrus.WithError(err).Errorf("create task callback failed, task: %v", t)
+		eid, e := s.crons.AddFunc(t.Cron, func() {
+			s.taskJob(context.Background(), t)
+		})
+		if e != nil {
+			logrus.WithError(e).Error("add cron job failed")
+			continue
 		}
+		// store task id and cron job id
+		s.tasks.Store(t.Id, eid)
 	}
+	s.crons.Start()
 	return
 }
 
 func (s *Server) doHttp() (err error) {
-	opts := pkgsvc.NewOptions().SetAddress(s.opts.HttpAddress)
-	s.httpService = http.NewService(s.db, opts)
-	if s.httpService == nil {
-		err = fmt.Errorf("http service created failed")
-		return
-	}
-	err = s.httpService.Start()
+	naddr, err := pkgsvc.GetListeningAddress(s.opts.HttpAddress)
 	if err != nil {
 		return
 	}
-	httpSvc := s.httpService.(*http.Service)
-	httpSvc.RegisterCreateTaskCallback(s.createTaskCallback)
-	httpSvc.RegisterDeleteTaskCallback(s.deleteTaskCallback)
-	httpSvc.RegisterUpdateTaskCallback(s.updateTaskCallback)
-	<-s.quit
-	s.httpService.Close()
+	s.httpServer = &http.Server{
+		Addr:    naddr,
+		Handler: Cross(s.WebMux()), // or your custom handler
+	}
+	logrus.Infoln("http service is started ...", "addr", s.httpServer.Addr)
+	err = s.httpServer.ListenAndServe()
+	if err != nil {
+		logrus.WithError(err).Errorln("failed to http serve", "error", err)
+		return err
+	}
+	logrus.Infoln("http server existed ...")
 	return
 }
